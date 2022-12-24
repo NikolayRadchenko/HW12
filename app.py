@@ -1,30 +1,42 @@
 from flask import Flask, request, render_template, send_from_directory
-# from functions import ...
+import logging
+from functions import add_post
+from main.views import main_blueprint
+from loader.views import loader_blueprint
 
-POST_PATH = "posts.json"
-UPLOAD_FOLDER = "uploads/images"
+UPLOAD_FOLDER = "./uploads/images/"
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+
+logging.basicConfig(filename="basic.log", level=logging.INFO)
 
 app = Flask(__name__)
 
-
-@app.route("/")
-def page_index():
-    pass
+app.register_blueprint(main_blueprint)
+app.register_blueprint(loader_blueprint)
 
 
-@app.route("/list")
-def page_tag():
-    pass
-
-
-@app.route("/post", methods=["GET", "POST"])
+@app.route("/post", methods=["GET"])
 def page_post_form():
-    pass
+    return render_template('post_form.html')
 
 
 @app.route("/post", methods=["POST"])
 def page_post_upload():
-    pass
+    picture = request.files.get("picture")
+    if picture:
+        filename = picture.filename
+        extension = filename.split(".")[-1]
+        if extension in ALLOWED_EXTENSIONS:
+            picture.save(f'{UPLOAD_FOLDER}{filename}')
+            post = {"pic": f"{UPLOAD_FOLDER}{filename}", "content": request.form["content"]}
+            add_post(post)
+            return render_template('post_uploaded.html', text_post=post["content"], url=post["pic"])
+        else:
+            logging.info(f"Попытка загрузки файла с расширением {extension}")
+            return render_template("mistake.html", extension=extension)
+    else:
+        logging.error("Ошибка загрузки файла")
+        return "Файл не загружен"
 
 
 @app.route("/uploads/<path:path>")
@@ -33,4 +45,3 @@ def static_dir(path):
 
 
 app.run()
-
